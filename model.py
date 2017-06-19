@@ -5,6 +5,8 @@ import numpy as np
 import pickle
 from get_data import get_data
 
+train_data, train_label = get_data(r'data\lstm_train_file\train_sentences.pickle')
+test_data , test_label  = get_data(r'data\lstm_train_file\test_sentences.pickle')
 
 batch_size = 128
 n_steps = 113 # timesteps, number of words in one sentence
@@ -78,18 +80,19 @@ cost = get_cost(pred,y,length)
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 accuracy = get_accuracy(pred,y,length)
 
-display_step =100
+display_step =10
 
 init = tf.global_variables_initializer()
 
 with tf.Session() as sess:
-    train_data, train_label = get_data(r'data\lstm_train_file\train_sentences.pickle')
-    test_data , test_label  = get_data(r'data\lstm_train_file\test_sentences.pickle')
+
     num_sentences = len(train_data)
     num_iters = num_sentences//batch_size
-    num_epochs = 10
+    num_epochs = 2
     sess.run(init)
-
+    print('variable initialized')
+    print('num of sentences: ', num_sentences)
+    print('num of iters: ', num_iters)
     offset = 0
     endset = 0+batch_size
     for e in range(num_epochs):
@@ -102,12 +105,12 @@ with tf.Session() as sess:
             
             if  endset - num_sentences > 0:
                 batch_x = train_data[offset:]
-                batch_x.append(train_data[0:endset - num_sentences])
+                batch_x = np.concatenate((batch_x, train_data[0:endset - num_sentences]), axis=0)
                 batch_y = train_label[offset:]
-                batch_y.append(train_label[0:endset - num_sentences])
+                batch_y = np.concatenate((batch_y, train_label[0:endset - num_sentences]), axis=0)
                 sess.run(optimizer, feed_dict={x: batch_x, y: batch_y})
                 offset = endset - num_sentences
-                endset = offset +128
+                endset = offset + batch_size
 
             if i%display_step ==0:
                 acc = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y})
@@ -116,11 +119,20 @@ with tf.Session() as sess:
                 print("Iter " + str(i) + ", Minibatch Loss= " + \
                     "{:.6f}".format(loss) + ", Training Accuracy= " + \
                     "{:.5f}".format(acc))
-
-
-        print("Testing Accuracy: ", sess.run(accuracy, feed_dict={x: test_data[0:128], y: test_label[0:128]}))
+        
+        test_data = np.array(test_data)
+        batch_x = test_data[0:128,0:113,:]
+        batch_y = test_label[0:128,0:113,:]
+        acc = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y})
+        loss = sess.run(cost, feed_dict={x: batch_x, y: batch_y})
+        pred = sess.run(pred, feed_dict={x: batch_x, y: batch_y})
+        print("epoche " + str(e) + ",testbatch Loss= " + \
+                    "{:.6f}".format(loss) + ", testing Accuracy= " + \
+                    "{:.5f}".format(acc))
                 
-
-
+#%%
+test_data = np.array(test_data)
+batch_x = test_data[0:128,0:113,:]
+print(batch_x.shape)
 
 
