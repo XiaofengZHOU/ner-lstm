@@ -5,8 +5,8 @@ import numpy as np
 import pickle
 from get_data import get_data
 
-train_data, train_label = get_data(r'data\lstm_train_file\train_sentences.pickle')
-test_data , test_label  = get_data(r'data\lstm_train_file\test_sentences.pickle')
+train_data, train_label = get_data(r'data\lstm_train_file\train_sentences_without_padding.pickle')
+test_data , test_label  = get_data(r'data\lstm_train_file\test_sentences_without_padding.pickle')
 
 batch_size = 128
 n_steps = 113 # timesteps, number of words in one sentence
@@ -48,13 +48,13 @@ def get_sentence_length(sequence):
     length = tf.cast(length, tf.int32)
     return length
 
-def get_cost(prediction,label,length):
+def get_cost(prediction,label):
     cross_entropy = label * tf.log(prediction)
     cross_entropy = -1 * tf.reduce_sum(cross_entropy, reduction_indices=2)
     mask = tf.sign(tf.reduce_max(tf.abs(label), reduction_indices=2))
     cross_entropy *= mask
     cross_entropy = tf.reduce_sum(cross_entropy, reduction_indices=1)
-    cross_entropy /= tf.cast(length, tf.float32)
+    cross_entropy /= tf.reduce_sum(mask, reduction_indices=1)
     return tf.reduce_mean(cross_entropy)
 
 def get_accuracy(pred,label,length):
@@ -64,7 +64,7 @@ def get_accuracy(pred,label,length):
     mistakes *= mask
     # Average over actual sequence lengths.
     mistakes = tf.reduce_sum(mistakes, reduction_indices=1)
-    mistakes /= tf.cast(length, tf.float32)
+    mistakes /= tf.reduce_sum(mask, reduction_indices=1)
     return tf.reduce_mean(mistakes)
 
 #%%
@@ -76,7 +76,7 @@ outputs = tf.reshape(outputs,[-1,2*n_hidden])
 length = get_sentence_length(x)
 pred = tf.nn.softmax( tf.matmul(outputs, weights) + biases )
 pred = tf.reshape(pred, [-1, n_steps, n_classes])
-cost = get_cost(pred,y,length)
+cost = get_cost(pred,y)
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 accuracy = get_accuracy(pred,y,length)
 
@@ -130,9 +130,3 @@ with tf.Session() as sess:
                     "{:.6f}".format(loss) + ", testing Accuracy= " + \
                     "{:.5f}".format(acc))
                 
-#%%
-test_data = np.array(test_data)
-batch_x = test_data[0:128,0:113,:]
-print(batch_x.shape)
-
-
