@@ -121,12 +121,13 @@ with tf.Session() as sess:
                     "{:.5f}".format(acc))
         
         test_data = np.array(test_data)
+        test_label= np.array(test_label)
         batch_x = test_data[0:128,0:113,:]
         batch_y = test_label[0:128,0:113,:]
         acc = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y})
         loss = sess.run(cost, feed_dict={x: batch_x, y: batch_y})
-        pred = sess.run(pred, feed_dict={x: batch_x, y: batch_y})
         print("epoche " + str(e) + ",testbatch Loss= " + \
                     "{:.6f}".format(loss) + ", testing Accuracy= " + \
                     "{:.5f}".format(acc))
+    pred = sess.run(pred, feed_dict={x: batch_x, y: batch_y})
                 
