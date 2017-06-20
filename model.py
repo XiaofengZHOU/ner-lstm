@@ -57,7 +57,7 @@ def get_cost(prediction,label):
     cross_entropy /= tf.reduce_sum(mask, reduction_indices=1)
     return tf.reduce_mean(cross_entropy)
 
-def get_accuracy(pred,label,length):
+def get_accuracy(pred,label):
     mistakes = tf.equal(tf.argmax(label, 2), tf.argmax(pred, 2))
     mistakes = tf.cast(mistakes, tf.float32)
     mask = tf.sign(tf.reduce_max(tf.abs(label), reduction_indices=2))
@@ -78,7 +78,7 @@ pred = tf.nn.softmax( tf.matmul(outputs, weights) + biases )
 pred = tf.reshape(pred, [-1, n_steps, n_classes])
 cost = get_cost(pred,y)
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
-accuracy = get_accuracy(pred,y,length)
+accuracy = get_accuracy(pred,y)
 
 display_step =10
 
