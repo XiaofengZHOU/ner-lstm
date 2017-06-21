@@ -90,9 +90,9 @@ def get_accuracy(pred,label):
 def generate_batch(data,label,length,offset,endset):
     if endset > len(data):
         batch_data = data[offset:]
-        batch_label= label[label:]
-        batch_data = np.concatenate( (batch_data,  data[0:endset - len(data)]),  axis=0 )
-        batch_label= np.concatenate( (batch_label, label[0:endset - len(data)]), axis=0 )
+        batch_label= label[offset:]
+        batch_data = batch_data + data[0:endset - len(data)]
+        batch_label= batch_label+ label[0:endset - len(data)]
         offset = endset - len(data)
         endset = offset + batch_size
     else:
@@ -112,6 +112,17 @@ def generate_batch(data,label,length,offset,endset):
             batch_label[i] = np.concatenate( (batch_label[i],padding_labels),  axis=0 )
 
     return batch_data,batch_label,offset,endset
+
+def generate_test_data(data,label,length):
+    for i in range(len(data)):
+        if len(data[i]) < length:
+            padding_word = np.array([0 for _ in range(311)])
+            padding_label = np.array([0 for _ in range(5)])
+            padding_words = np.array([padding_word   for _ in range(length-len(data[i]))])
+            padding_labels = np.array([padding_label for _ in range(length-len(data[i]))])
+            data[i]  = np.concatenate( (data[i],padding_words),  axis=0 )
+            label[i] = np.concatenate( (label[i],padding_labels),  axis=0 )
+    return data,label
 
 
 def get_entity_accuracy(prediction,label):
@@ -151,13 +162,6 @@ def get_entity_accuracy(prediction,label):
     return [num_o,num_o_true,num_loc,num_loc_true,num_per,num_per_true,num_misc,num_misc_true,num_org,num_org_true]
     
 
-#%%
-
-# offset = 0
-# endset = offset + batch_size
-# batch_x,batch_y,offset,endset= generate_batch(train_data,train_label,max_length,offset,endset)
-
-
 
 #%%
 outputs = BiRnn(x)
@@ -169,7 +173,9 @@ pred = tf.reshape(pred, [-1, n_steps, n_classes])
 cost = get_cost(pred,y)
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 accuracy = get_accuracy(pred,y)
+
 init = tf.global_variables_initializer()
+saver = tf.train.Saver()
 
 num_iters = len(train_data)//batch_size
 num_epochs = 5
@@ -194,7 +200,7 @@ with tf.Session() as sess:
                 print("Iter " + str(i) + ", Minibatch Loss= " + \
                     "{:.6f}".format(loss) + ", Training Accuracy= " + \
                     "{:.5f}".format(acc))
-
+    saver.save(sess,'tf_model/model.ckpt')
     test_offset = 0
     test_endset = test_offset +batch_size
     for i in range( len(test_data)//batch_size ):
@@ -205,9 +211,13 @@ with tf.Session() as sess:
         print("Test Iter " + str(i) + ", Minibatch Loss= " + \
             "{:.6f}".format(loss) + ", Training Accuracy= " + \
             "{:.5f}".format(acc))
+            
 
     
         
+
+#%%
+
 
 
         
