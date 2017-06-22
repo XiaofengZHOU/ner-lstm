@@ -126,40 +126,18 @@ def generate_test_data(data,label,length):
 
 
 def get_entity_accuracy(prediction,label):
-    num_o =0
-    num_o_true = 0
-    num_loc = 0
-    num_loc_true = 0
-    num_per = 0
-    num_per_true = 0
-    num_misc = 0
-    num_misc_true = 0
-    num_org = 0 
-    num_org_true = 0
+
+    result_mat = np.zeros((5,6))
+    
     for i in range(len(prediction)):
         for j in range(len(label[i])):
-            if np.argmax(label[i][j]) ==0:
-                num_per = num_per +1
-                if np.argmax(prediction[i][j]) ==0:
-                    num_per_true = num_per_true +1
-            if np.argmax(label[i][j]) ==1:
-                num_loc = num_loc +1
-                if np.argmax(prediction[i][j]) ==1:
-                    num_loc_true = num_loc_true +1
-            if np.argmax(label[i][j]) ==2:
-                num_org = num_org +1
-                if np.argmax(prediction[i][j]) ==3:
-                    num_org_true = num_org_true +1
-            if np.argmax(label[i][j]) ==3:
-                num_misc = num_misc +1
-                if np.argmax(prediction[i][j]) ==3:
-                    num_misc_true = num_misc_true +1
-            if np.argmax(label[i][j]) ==4:
-                num_o = num_o +1
-                if np.argmax(prediction[i][j]) ==4:
-                    num_o_true = num_o_true +1
+            result_label = label[i][j]
+            result_pred  = prediction[i][j]
 
-    return [num_o,num_o_true,num_loc,num_loc_true,num_per,num_per_true,num_misc,num_misc_true,num_org,num_org_true]
+            result_mat[result_label][5] = result_mat[result_label][5] +1
+            result_mat[result_label][result_pred] = result_mat[result_label][result_pred] + 1
+
+    return result_mat
     
 
 
