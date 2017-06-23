@@ -43,23 +43,25 @@ y = tf.placeholder("float", [None, n_steps, n_classes])
 weights = tf.Variable(tf.random_normal([n_hidden*2, n_classes],stddev=0.01))
 biases =  tf.Variable(tf.random_normal([n_classes]))
 
-def lstm_cell():
+def lstm_cell(n_hidden):
     # With the latest TensorFlow source code (as of Mar 27, 2017),
     # the BasicLSTMCell will need a reuse parameter which is unfortunately not
     # defined in TensorFlow 1.0. To maintain backwards compatibility, we add
     # an argument check here:
     return tf.contrib.rnn.BasicLSTMCell(n_hidden, forget_bias=0.0, state_is_tuple=True,reuse=tf.get_variable_scope().reuse)
 
-def attn_cell():
-    return tf.contrib.rnn.DropoutWrapper(lstm_cell(), output_keep_prob=keep_prob)
+def attn_cell(n_hidden):
+    return tf.contrib.rnn.DropoutWrapper(lstm_cell(n_hidden), output_keep_prob=keep_prob)
 
 
-def BiRnn(x):
+def BiRnn(x,n_hidden):
     # Unstack to get a list of 'n_steps' tensors of shape (batch_size, embedding_size)
     x = tf.unstack(x, n_steps, 1)
-    lstm_fw_cells = rnn.MultiRNNCell([attn_cell() for _ in range(num_layers)] , state_is_tuple=True)
-    lstm_bw_cells = rnn.MultiRNNCell([attn_cell() for _ in range(num_layers)] , state_is_tuple=True)
+    lstm_fw_cells = rnn.MultiRNNCell([attn_cell(n_hidden) for _ in range(num_layers)] , state_is_tuple=True)
+    lstm_bw_cells = rnn.MultiRNNCell([attn_cell(n_hidden) for _ in range(num_layers)] , state_is_tuple=True)
     outputs, _, _ = rnn.static_bidirectional_rnn(lstm_fw_cells, lstm_bw_cells, x,dtype=tf.float32)
+    outputs = tf.transpose(tf.stack(outputs), perm=[1, 0, 2])
+    outputs = tf.reshape(outputs,[-1,2*n_hidden])
     return outputs
 
 def get_sentence_length(sequence):
@@ -126,26 +128,19 @@ def generate_test_data(data,label,length):
 
 
 def get_entity_accuracy(prediction,label):
-
     result_mat = np.zeros((5,6))
-    
     for i in range(len(prediction)):
         for j in range(len(label[i])):
-            result_label = label[i][j]
-            result_pred  = prediction[i][j]
-
+            result_label = np.argmax(label[i][j])
+            result_pred  = np.argmax(prediction[i][j])
             result_mat[result_label][5] = result_mat[result_label][5] +1
             result_mat[result_label][result_pred] = result_mat[result_label][result_pred] + 1
-
     return result_mat
     
 
 
 #%%
-outputs = BiRnn(x)
-outputs = tf.transpose(tf.stack(outputs), perm=[1, 0, 2])
-outputs = tf.reshape(outputs,[-1,2*n_hidden])
-length = get_sentence_length(x)
+outputs = BiRnn(x,n_hidden)
 pred = tf.nn.softmax( tf.matmul(outputs, weights) + biases )
 pred = tf.reshape(pred, [-1, n_steps, n_classes])
 cost = get_cost(pred,y)
@@ -155,12 +150,11 @@ accuracy = get_accuracy(pred,y)
 init = tf.global_variables_initializer()
 saver = tf.train.Saver()
 
-num_iters = len(train_data)//batch_size
-num_epochs = 5
-
 #%%
 with tf.Session() as sess:
     sess.run(init)
+    num_iters = len(train_data)//batch_size
+    num_epochs = 10
     print('variable initialized')
     print('num of iters: ', num_iters)
     offset = 0
@@ -178,7 +172,13 @@ with tf.Session() as sess:
                 print("Iter " + str(i) + ", Minibatch Loss= " + \
                     "{:.6f}".format(loss) + ", Training Accuracy= " + \
                     "{:.5f}".format(acc))
-    saver.save(sess,'tf_model/model.ckpt')
+        saver.save(sess,'tf_model/model.ckpt')
+    
+ 
+#%%
+saver = tf.train.Saver()
+with tf.Session() as sess:
+    saver.restore(sess,'tf_model/model.ckpt')
     test_offset = 0
     test_endset = test_offset +batch_size
     for i in range( len(test_data)//batch_size ):
@@ -189,13 +189,6 @@ with tf.Session() as sess:
         print("Test Iter " + str(i) + ", Minibatch Loss= " + \
             "{:.6f}".format(loss) + ", Training Accuracy= " + \
             "{:.5f}".format(acc))
-            
-
-    
-        
-
-#%%
-
 
 
         
